@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Untitled</title>
+    
+
+  </head>
+    
+  <body>
+  <!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Venn Diagram Defender - ผู้พิทักษ์จักรวาลเซต</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0b0c10;
+            color: #c5c6c7;
+            font-family: 'Chakra Petch', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            /* ป้องกันหน้าจอเลื่อนเวลาลากนิ้วบนมือถือ */
+            touch-action: none; 
+        }
+
+        #game-container {
+            width: 800px;
+            height: 600px;
+            background: radial-gradient(circle at center, #1f2833 0%, #0b0c10 100%);
+            position: relative;
+            border: 4px solid #66fcf1;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(102, 252, 241, 0.5);
+            overflow: hidden;
+            /* จุดศูนย์กลางสำหรับการย่อ/ขยาย */
+            transform-origin: center center; 
+        }
+
+        /* --- UI Screens --- */
+        .screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(11, 12, 16, 0.9);
+            z-index: 100;
+        }
+
+        .hidden { display: none !important; }
+
+        h1 {
+            color: #66fcf1;
+            font-size: 48px;
+            text-shadow: 0 0 10px #45a29e;
+            margin-bottom: 10px;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .instructions {
+            background: rgba(31, 40, 51, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #45a29e;
+            margin-bottom: 20px;
+            font-size: 18px;
+            max-width: 80%;
+        }
+
+        .instructions ul { text-align: left; padding-left: 20px; }
+
+        button {
+            background-color: #45a29e;
+            color: #0b0c10;
+            border: none;
+            padding: 15px 40px;
+            font-size: 24px;
+            font-family: 'Chakra Petch', sans-serif;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 0 15px #45a29e;
+        }
+
+        button:hover {
+            background-color: #66fcf1;
+            transform: scale(1.05);
+        }
+
+        /* --- Game UI --- */
+        #top-bar {
+            position: absolute;
+            top: 10px; left: 10px; right: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 20px;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        #target-condition {
+            color: #f3a83b;
+            font-size: 26px;
+            text-shadow: 0 0 8px #f3a83b;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0; left: 0;
+            z-index: 1;
+        }
+
+        /* --- Entities --- */
+        .alien {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, #ff4c4c, #990000);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 24px;
+            color: white;
+            cursor: grab;
+            z-index: 50;
+            box-shadow: 0 0 15px red;
+            border: 2px solid #ffaaaa;
+        }
+        
+        .alien::before {
+            content: '👾';
+            position: absolute;
+            font-size: 30px;
+            opacity: 0.3;
+        }
+
+        .alien:active { cursor: grabbing; }
+
+        /* --- Boss Fight UI --- */
+        #boss-ui {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            z-index: 20;
+        }
+
+        #boss-sprite {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 80px;
+            z-index: 15;
+            animation: float 2s infinite ease-in-out alternate;
+            text-shadow: 0 0 20px #ff00ff;
+        }
+
+        @keyframes float {
+            from { transform: translate(-50%, 0px); }
+            to { transform: translate(-50%, 20px); }
+        }
+
+        #boss-hp-bar {
+            position: absolute;
+            top: 160px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 15px;
+            background: #333;
+            border: 2px solid white;
+            border-radius: 10px;
+            z-index: 15;
+        }
+        #boss-hp-fill {
+            width: 100%;
+            height: 100%;
+            background: red;
+            transition: width 0.3s;
+        }
+        
+        .floating-text {
+            position: absolute;
+            color: lime;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 100;
+            pointer-events: none;
+            animation: floatUp 1s forwards;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="start-screen" class="screen">
+            <h1>Venn Diagram Defender<br><span style="font-size: 24px;">ผู้พิทักษ์จักรวาลเซต</span></h1>
+            <div class="instructions">
+                <strong>วิธีเล่น (แนะนำให้เล่นแนวนอน):</strong>
+                <ul>
+                    <li><strong>โหมดปกติ:</strong> สังเกต "ภารกิจ" ด้านบน (เช่น A ∪ B) แล้วคลิก/ใช้นิ้วลาก 👾 เอเลี่ยนที่ตกลงมาไปวางในพื้นที่แผนภาพให้ถูกต้อง</li>
+                    <li><strong>บอสไฟต์:</strong> เมื่อคะแนนถึง 50 บอสจะปรากฏตัว! อ่านสมการของบอส แล้ว <u>แตะเพื่อระบายสี</u> พื้นที่ให้ถูกต้อง จากนั้นกดปุ่ม "โจมตี!"</li>
+                </ul>
+            </div>
+            <button onclick="startGame()">เริ่มปกป้องจักรวาล!</button>
+        </div>
+
+        <div id="game-over-screen" class="screen hidden">
+            <h1 id="game-over-title">Game Over!</h1>
+            <div class="instructions" style="text-align: center;">
+                <p>คะแนนของคุณ: <span id="final-score">0</span></p>
+            </div>
+            <button onclick="restartGame()">เล่นอีกครั้ง</button>
+        </div>
+
+        <div id="top-bar" class="hidden">
+            <div>คะแนน: <span id="score">0</span></div>
+            <div id="target-condition">ภารกิจ: โหลดข้อมูล...</div>
+            <div>เวลา: <span id="time">60</span>s</div>
+        </div>
+
+        <div id="boss-sprite" class="hidden">👽</div>
+        <div id="boss-hp-bar" class="hidden"><div id="boss-hp-fill"></div></div>
+
+        <canvas id="venn-canvas" width="800" height="600"></canvas>
+
+        <div id="boss-ui" class="hidden">
+            <button onclick="attackBoss()">⚡ โจมตีบอส! ⚡</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Responsive Scaling Logic ---
+        let scaleFactor = 1;
+        function resizeGame() {
+            const container = document.getElementById('game-container');
+            const winW = window.innerWidth;
+            const winH = window.innerHeight;
+            // คำนวณอัตราส่วนการย่อ/ขยาย (เว้นขอบนิดหน่อย 95%)
+            scaleFactor = Math.min(winW / 800, winH / 600) * 0.95;
+            container.style.transform = `scale(${scaleFactor})`;
+        }
+        window.addEventListener('resize', resizeGame);
+        resizeGame(); // เรียกใช้ครั้งแรก
+
+        // --- Game Variables ---
+        let score = 0;
+        let timeLeft = 60;
+        let gameInterval, alienInterval, animationId; 
+        let isBossPhase = false;
+        let bossHp = 3;
+        const maxBossHp = 3;
+        let aliens = [];
+        let currentCondition = null;
+        let draggingAlien = null;
+        let pointerOffset = { x: 0, y: 0 };
+
+        // --- Venn Diagram Geometry ---
+        const cA = { x: 300, y: 350, r: 140, label: 'A' };
+        const cB = { x: 500, y: 350, r: 140, label: 'B' };
+        const canvas = document.getElementById('venn-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // State for Boss Phase clicking
+        let selectedRegions = {
+            onlyA: false,
+            onlyB: false,
+            intersect: false,
+            outside: false
+        };
+
+        // Set Logic conditions
+        const conditions = [
+            { text: "A ∪ B", correct: ['onlyA', 'onlyB', 'intersect'] },
+            { text: "A ∩ B", correct: ['intersect'] },
+            { text: "A - B", correct: ['onlyA'] },
+            { text: "B - A", correct: ['onlyB'] },
+            { text: "(A ∪ B)'", correct: ['outside'] },
+            { text: "เซต A", correct: ['onlyA', 'intersect'] },
+            { text: "เซต B", correct: ['onlyB', 'intersect'] }
+        ];
+
+        // --- Audio System (Web Audio API) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+                gainNode.gain.setValueAtTime(0.5, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now); osc.stop(now + 0.3);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(100, now + 0.2);
+                gainNode.gain.setValueAtTime(0.5, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
+            } else if (type === 'boss_hit') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.exponentialRampToValueAtTime(20, now + 0.5);
+                gainNode.gain.setValueAtTime(0.8, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                osc.start(now); osc.stop(now + 0.5);
+            } else if (type === 'win') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.setValueAtTime(600, now + 0.2);
+                osc.frequency.setValueAtTime(800, now + 0.4);
+                gainNode.gain.setValueAtTime(0.5, now);
+                gainNode.gain.linearRampToValueAtTime(0, now + 1);
+                osc.start(now); osc.stop(now + 1);
+            }
+        }
+
+        // --- Drawing System ---
+        function drawVenn() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Background (Outside region highlighting)
+            if (isBossPhase && selectedRegions.outside) {
+                ctx.fillStyle = 'rgba(102, 252, 241, 0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Draw Only A
+            if (isBossPhase && selectedRegions.onlyA) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(cA.x, cA.y, cA.r, 0, Math.PI * 2);
+                ctx.clip();
+                ctx.beginPath();
+                ctx.rect(0, 0, canvas.width, canvas.height);
+                ctx.arc(cB.x, cB.y, cB.r, 0, Math.PI * 2, true);
+                ctx.clip();
+                ctx.fillStyle = 'rgba(102, 252, 241, 0.6)';
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // Draw Only B
+            if (isBossPhase && selectedRegions.onlyB) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(cB.x, cB.y, cB.r, 0, Math.PI * 2);
+                ctx.clip();
+                ctx.beginPath();
+                ctx.rect(0, 0, canvas.width, canvas.height);
+                ctx.arc(cA.x, cA.y, cA.r, 0, Math.PI * 2, true);
+                ctx.clip();
+                ctx.fillStyle = 'rgba(102, 252, 241, 0.6)';
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // Draw Intersection
+            if (isBossPhase && selectedRegions.intersect) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(cA.x, cA.y, cA.r, 0, Math.PI * 2);
+                ctx.clip();
+                ctx.beginPath();
+                ctx.arc(cB.x, cB.y, cB.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(102, 252, 241, 0.8)';
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // Draw Outlines
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#45a29e';
+            ctx.beginPath(); ctx.arc(cA.x, cA.y, cA.r, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(cB.x, cB.y, cB.r, 0, Math.PI * 2); ctx.stroke();
+
+            // Labels
+            ctx.font = '30px Chakra Petch';
+            ctx.fillStyle = '#66fcf1';
+            ctx.fillText('A', cA.x - cA.r + 20, cA.y - cA.r + 20);
+            ctx.fillText('B', cB.x + cB.r - 40, cB.y - cB.r + 20);
+            ctx.fillText('U', 20, canvas.height - 20);
+        }
+
+        // --- Core Logic ---
+        function getRegion(x, y) {
+            const distA = Math.hypot(x - cA.x, y - cA.y);
+            const distB = Math.hypot(x - cB.x, y - cB.y);
+            const inA = distA <= cA.r;
+            const inB = distB <= cB.r;
+
+            if (inA && inB) return 'intersect';
+            if (inA && !inB) return 'onlyA';
+            if (!inA && inB) return 'onlyB';
+            return 'outside';
+        }
+
+        function pickNewCondition() {
+            currentCondition = conditions[Math.floor(Math.random() * conditions.length)];
+            const textEl = document.getElementById('target-condition');
+            if (isBossPhase) {
+                textEl.innerHTML = `🔥 บอสสั่งให้ระบายสี: <span style="color:#ff4c4c;">${currentCondition.text}</span> 🔥`;
+            } else {
+                textEl.innerText = `ภารกิจ: วางลงใน ${currentCondition.text}`;
+            }
+        }
+
+        // --- Game Controls ---
+        function startGame() {
+            clearInterval(gameInterval);
+            clearTimeout(alienInterval);
+            cancelAnimationFrame(animationId);
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('top-bar').classList.remove('hidden');
+            
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            score = 0;
+            timeLeft = 60;
+            isBossPhase = false;
+            updateScore();
+            pickNewCondition();
+            drawVenn();
+
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('time').innerText = timeLeft;
+                if (timeLeft <= 0) endGame("หมดเวลา!");
+            }, 1000);
+
+            spawnAlienLoop();
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function restartGame() {
+            document.getElementById('game-over-screen').classList.add('hidden');
+            aliens.forEach(a => a.el.remove());
+            aliens = [];
+            
+            document.getElementById('boss-sprite').classList.add('hidden');
+            document.getElementById('boss-hp-bar').classList.add('hidden');
+            document.getElementById('boss-ui').classList.add('hidden');
+            
+            for(let key in selectedRegions) selectedRegions[key] = false;
+            
+            startGame();
+        }
+
+        function spawnAlienLoop() {
+            if (isBossPhase) return;
+            spawnAlien();
+            alienInterval = setTimeout(spawnAlienLoop, 1500);
+        }
+
+        function spawnAlien() {
+            const alien = document.createElement('div');
+            alien.className = 'alien';
+            
+            const chars = 'XYZ12345';
+            alien.innerText = chars.charAt(Math.floor(Math.random() * chars.length));
+            
+            const startX = Math.random() * 700 + 20;
+            let y = -50;
+            
+            alien.style.left = startX + 'px';
+            alien.style.top = y + 'px';
+            
+            document.getElementById('game-container').appendChild(alien);
+            
+            const alienObj = { el: alien, x: startX, y: y, speed: Math.random() * 1.5 + 1, isDragging: false };
+            aliens.push(alienObj);
+
+            // ใช้ pointerdown ซึ่งรองรับทั้งเมาส์และนิ้วสัมผัส
+            alien.addEventListener('pointerdown', (e) => {
+                alienObj.isDragging = true;
+                draggingAlien = alienObj;
+                alien.style.zIndex = 100;
+                
+                const rect = alien.getBoundingClientRect();
+                // หารด้วย scaleFactor เพื่อชดเชยค่าจากการย่อขยายหน้าจอ
+                pointerOffset.x = (e.clientX - rect.left) / scaleFactor;
+                pointerOffset.y = (e.clientY - rect.top) / scaleFactor;
+                alien.setPointerCapture(e.pointerId);
+            });
+
+            alien.addEventListener('pointerup', (e) => {
+                if(!alienObj.isDragging) return;
+                alienObj.isDragging = false;
+                draggingAlien = null;
+                alien.style.zIndex = 50;
+                checkDrop(alienObj);
+            });
+        }
+
+        document.addEventListener('pointermove', (e) => {
+            if (draggingAlien) {
+                const containerRect = document.getElementById('game-container').getBoundingClientRect();
+                // หารด้วย scaleFactor เพื่อให้ตำแหน่งเมาส์/นิ้ว ตรงกับขนาดเกมที่แท้จริง
+                let newX = (e.clientX - containerRect.left) / scaleFactor - pointerOffset.x;
+                let newY = (e.clientY - containerRect.top) / scaleFactor - pointerOffset.y;
+                
+                draggingAlien.x = newX;
+                draggingAlien.y = newY;
+                draggingAlien.el.style.left = newX + 'px';
+                draggingAlien.el.style.top = newY + 'px';
+            }
+        });
+
+        function showFloatingText(text, x, y, color) {
+            const el = document.createElement('div');
+            el.className = 'floating-text';
+            el.innerText = text;
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            if(color) el.style.color = color;
+            document.getElementById('game-container').appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        function checkDrop(alienObj) {
+            const centerX = alienObj.x + 25;
+            const centerY = alienObj.y + 25;
+            const dropRegion = getRegion(centerX, centerY);
+
+            if (currentCondition.correct.includes(dropRegion)) {
+                playSound('correct');
+                score += 10;
+                showFloatingText("+10", alienObj.x, alienObj.y, 'lime');
+                if (score >= 50 && !isBossPhase) startBossPhase();
+            } else {
+                playSound('wrong');
+                timeLeft -= 5;
+                showFloatingText("-5s", alienObj.x, alienObj.y, 'red');
+                document.getElementById('time').innerText = timeLeft;
+            }
+
+            updateScore();
+            alienObj.el.remove();
+            aliens = aliens.filter(a => a !== alienObj);
+            
+            if(!isBossPhase) pickNewCondition();
+        }
+
+        function updateScore() {
+            document.getElementById('score').innerText = score;
+        }
+
+        function gameLoop() {
+            if (!isBossPhase) {
+                for (let i = aliens.length - 1; i >= 0; i--) {
+                    const a = aliens[i];
+                    if (!a.isDragging) {
+                        a.y += a.speed;
+                        a.el.style.top = a.y + 'px';
+                        if (a.y > 600) {
+                            a.el.remove();
+                            aliens.splice(i, 1);
+                        }
+                    }
+                }
+            }
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // --- Boss Phase Mechanics ---
+        function startBossPhase() {
+            isBossPhase = true;
+            clearTimeout(alienInterval);
+            
+            bossHp = maxBossHp;
+            document.getElementById('boss-hp-fill').style.width = '100%';
+            
+            aliens.forEach(a => a.el.remove());
+            aliens = [];
+
+            playSound('boss_hit');
+            
+            document.getElementById('boss-sprite').classList.remove('hidden');
+            document.getElementById('boss-hp-bar').classList.remove('hidden');
+            document.getElementById('boss-ui').classList.remove('hidden');
+            
+            timeLeft += 30; 
+            
+            pickNewCondition();
+            drawVenn();
+        }
+
+        // เปลี่ยน click เป็น pointerdown เพื่อให้ตอบสนองบนมือถือได้ทันที ไม่มีดีเลย์
+        canvas.addEventListener('pointerdown', (e) => {
+            if (!isBossPhase) return;
+            const rect = canvas.getBoundingClientRect();
+            // ชดเชยพิกัดการคลิกให้ตรงกับ scale ของหน้าจอ
+            const x = (e.clientX - rect.left) / scaleFactor;
+            const y = (e.clientY - rect.top) / scaleFactor;
+            
+            const clickedRegion = getRegion(x, y);
+            selectedRegions[clickedRegion] = !selectedRegions[clickedRegion];
+            playSound('correct');
+            drawVenn();
+        });
+
+        function attackBoss() {
+            const correctRegions = currentCondition.correct;
+            const selectedArr = Object.keys(selectedRegions).filter(k => selectedRegions[k]);
+            
+            const isMatch = (selectedArr.length === correctRegions.length) && 
+                            selectedArr.every(val => correctRegions.includes(val));
+
+            if (isMatch) {
+                playSound('boss_hit');
+                bossHp--;
+                document.getElementById('boss-hp-fill').style.width = (bossHp / maxBossHp * 100) + '%';
+                
+                for(let key in selectedRegions) selectedRegions[key] = false;
+                
+                const bossEl = document.getElementById('boss-sprite');
+                bossEl.style.transform = 'translate(-50%, 0) scale(1.2)';
+                bossEl.style.color = 'red';
+                setTimeout(() => {
+                    bossEl.style.transform = 'translate(-50%, 0) scale(1)';
+                    bossEl.style.color = 'white';
+                }, 200);
+
+                if (bossHp <= 0) {
+                    endGame("ผู้ชนะ! คุณปกป้องจักรวาลสำเร็จ!");
+                    playSound('win');
+                } else {
+                    pickNewCondition();
+                    drawVenn();
+                }
+            } else {
+                playSound('wrong');
+                timeLeft -= 10;
+                showFloatingText("ระบายสีผิด! โดนโจมตี -10s", 400, 300, 'red');
+            }
+        }
+
+        function endGame(message) {
+            clearInterval(gameInterval);
+            clearTimeout(alienInterval);
+            cancelAnimationFrame(animationId);
+
+            document.getElementById('game-over-screen').classList.remove('hidden');
+            document.getElementById('game-over-title').innerText = message;
+            
+            if(bossHp <= 0) score += timeLeft * 2;
+            
+            document.getElementById('final-score').innerText = score;
+        }
+
+        drawVenn();
+    </script>
+</body>
+</html>
+    
+  </body>
+  
+</html>
